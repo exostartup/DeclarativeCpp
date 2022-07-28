@@ -1,12 +1,10 @@
 
 #include <functional>
 #include <unordered_set>
-
 #include <optional>
 
 class PropertyBase;
 class ReactionBase;
-
 
 
 class ReactionBase {
@@ -53,7 +51,6 @@ public:
 	}
 
 private:
-
 	virtual void makeDirty() override {
 		if (dirtImmune)
 			return;
@@ -102,10 +99,8 @@ public:
 			}
 			isDeferred = false;
 			deferred.clear();
-		}
-		
+		}		
 	};
-
 };
 
 class PropertyBase {
@@ -132,7 +127,7 @@ template <typename T>
 class Property:  PropertyBase,  ReactionBase {
 public:
 	using Function = std::function<const T&()>;
-
+	//using FunctionThis = std::function<const T& (const Property& property)>;
 private:
 	T value = {};
 	Function function = {};
@@ -149,16 +144,13 @@ private:
 		return function();
 	}
 
-
-public:
-	
+public:	
 	T getValue() {
 		if (Reaction::current) {
 			Reaction::current->addTriggeringProperty(this);
 		}
 
 		if (dirty) {
-
 			if (executionInProgress) {
 				reactionsWhoReceivedOldValue.insert(Reaction::current);
 				return value;
@@ -182,15 +174,11 @@ public:
 				}
 				reactionsWhoReceivedOldValue.clear();
 			}
-
 		}
-
 		return value;
 	}
 
 	void setFunction(Function function) {
-		/*if (function == this->function)
-			return;*/
 
 		unsubscribeFromTriggeringProperties();
 		this->function = function;
@@ -259,6 +247,12 @@ std::ostream& operator<<(std::ostream& stream, Property<T>& property){
 	return stream;
 }
 
+#define Declarative(type, name, initializer)\
+float Get##name() { return _##name.getValue(); }\
+void Put##name(float value) { _##name.setValue(value); }\
+__declspec(property(get = Get##name, put = Put##name)) float name;\
+Property<type> _##name {initializer};\
+
 
 
 //========================================================================================
@@ -267,15 +261,40 @@ std::ostream& operator<<(std::ostream& stream, Property<T>& property){
 class Test {
 public:
 
-	Property<float> A = 5;
+private:
+	Property<float> _A = 5;	
 
-	Property<float> B{[&]() {
-		return +A;
+public:
+	float GetA() { return _A.getValue(); } void PutA(float value) { _A.setValue(value); } __declspec(property(get = GetA, put = PutA)) float A;
+
+
+
+
+	Declarative(float, E, [&]() {
+		std::cout << "<E>";
+		if (A == 0)
+			return -1.0f;
+		return A + 2;
+		})
+
+public:
+
+
+
+	Property<float> B{[this]() {
+		std::cout << "<B>";
+		return A + E;
 	}};
 
-	Property<float> C{ [this]() { return A + B; } };
+	Property<float> C{[this]() {
+		std::cout << "<C>";
+		return A + B;
+	}};
 
-	Property<float> D{ [this]() { return A + B + C; } };
+	Property<float> D{ [this]() {
+		std::cout << "<D>";
+		return A + B + C;
+	}};
 
 };
 
@@ -284,17 +303,10 @@ public:
 
 int main() {
 
-
 	Test test{};
 
-	Reaction r0([&]() {
-		std::cout << "test.A == " << test.A << std::endl;
-		}
-	);
-
-
-	Reaction r1([&]() {
-		std::cout << "test.B == " << test.B << std::endl;
+	Reaction r3([&]() {
+		std::cout << "test.D == " << test.D << std::endl;
 		}
 	);
 
@@ -303,12 +315,15 @@ int main() {
 		}
 	);
 
-	Reaction r3([&]() {
-		std::cout << "test.D == " << test.D << std::endl;
+	Reaction r1([&]() {
+		std::cout << "test.B == " << test.B << std::endl;
 		}
 	);
 
-
+	Reaction r0([&]() {
+		std::cout << "test.A == " << test.A << std::endl;
+		}
+	);
 
 	std::cout << ">>>>> test.A = 10" << std::endl;
 	{
