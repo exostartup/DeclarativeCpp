@@ -126,7 +126,7 @@ void ReactionBase::unsubscribeFromTriggeringProperties() {
 template <typename T>
 class Property:  PropertyBase,  ReactionBase {
 public:
-	using Function = std::function<const T&()>;
+	using Function = std::function<T()>;
 	//using FunctionThis = std::function<const T& (const Property& property)>;
 private:
 	T value = {};
@@ -261,13 +261,8 @@ Property<type> _##name {initializer};\
 class Test {
 public:
 
-private:
-	Property<float> _A = 5;	
-
 public:
-	float GetA() { return _A.getValue(); } void PutA(float value) { _A.setValue(value); } __declspec(property(get = GetA, put = PutA)) float A;
-
-
+	Property<float> A = 5;	
 
 
 	Declarative(float, E, [&]() {
@@ -282,8 +277,7 @@ public:
 
 
 	Property<float> B{[this]() {
-		std::cout << "<B>";
-		return A + E;
+		return A;
 	}};
 
 	Property<float> C{[this]() {
