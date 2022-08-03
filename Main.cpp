@@ -1,7 +1,7 @@
 
 #include <functional>
 #include <unordered_set>
-#include <optional>
+
 
 class PropertyBase;
 class ReactionBase;
@@ -127,7 +127,7 @@ template <typename T>
 class Property:  PropertyBase,  ReactionBase {
 public:
 	using Function = std::function<T()>;
-	//using FunctionThis = std::function<const T& (const Property& property)>;
+	//using FunctionThis = std::function<const T& (Property& property)>;
 private:
 	T value = {};
 	Function function = {};
@@ -216,6 +216,12 @@ private:
 	}
 
 public:
+
+	/*template<typename TLambda, class enable = std::enable_if_t<std::is_same_v<T, std::invoke_result_t<TLambda>>>>
+	Property(TLambda lambda) {
+		setFunction(lambda);
+	}*/
+
 	Property(const Property&) = delete;
 
 	Property() {}
@@ -226,7 +232,7 @@ public:
 
 	Property(Function function) {
 		setFunction(function);
-	}	
+	}
 
 	operator const T () {
 		return getValue();
@@ -247,36 +253,45 @@ std::ostream& operator<<(std::ostream& stream, Property<T>& property){
 	return stream;
 }
 
-#define Declarative(type, name, initializer)\
-float Get##name() { return _##name.getValue(); }\
-void Put##name(float value) { _##name.setValue(value); }\
-__declspec(property(get = Get##name, put = Put##name)) float name;\
-Property<type> _##name {initializer};\
+#define Declarative(type, name)\
+float name() { return Property##name.getValue(); }\
+void set##name(float value) { Property##name.setValue(value); }\
+/*__declspec(property(get = get##name, put = set##name)) float name;*/\
+Property<type> Property##name\
 
 
 
 //========================================================================================
 
 #include <iostream>
+#include <chrono>
+#include <thread>
 class Test {
 public:
 
 public:
-	Property<float> A = 5;	
+	//Property<float> A = 5;	
+
+	Declarative(float, A) = 5;
+
+	Declarative(float, F)  = 8;
+
+	Declarative(float, E) {
+		[this]() -> float {
+			std::cout << "<E>";
+			if (A() == 0)
+				return -1;
+			return A();
+		}
+	};
 
 
-	Declarative(float, E, [&]() {
-		std::cout << "<E>";
-		if (A == 0)
-			return -1.0f;
-		return A + 2;
-		})
 
 public:
 
 
 
-	Property<float> B{[this]() {
+	/*Property<float> B{[this]() -> float {
 		return A;
 	}};
 
@@ -288,7 +303,7 @@ public:
 	Property<float> D{ [this]() {
 		std::cout << "<D>";
 		return A + B + C;
-	}};
+	}};*/
 
 };
 
@@ -296,10 +311,40 @@ public:
 
 
 int main() {
+	
+
+	Property<float> tick = 0;
+
+	int currentUpdateId = -1;
+
+
+	Reaction updateSocketNode
+
+	Property<int> socketNode([&, updateId = 0]() mutable  {
+		tick.getValue();
+		updateId = 1;
+			
+			
+	});
+
+
+
+
+
+	while (true) {
+		using namespace std::chrono_literals;
+		tick = tick+1;
+		std::this_thread::sleep_for(1000ms);
+	}
+
+
+
+
+	//Declarative(float, M) = 5;
 
 	Test test{};
-
-	Reaction r3([&]() {
+	
+	/*Reaction r3([&]() {
 		std::cout << "test.D == " << test.D << std::endl;
 		}
 	);
@@ -329,7 +374,7 @@ int main() {
 	{
 		Reaction::DeferredGuard _;
 		test.A = 0;
-	}
+	}*/
 
 	return 0;
 }
